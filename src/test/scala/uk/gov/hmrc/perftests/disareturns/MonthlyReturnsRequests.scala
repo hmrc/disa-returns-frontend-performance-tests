@@ -17,12 +17,23 @@
 package uk.gov.hmrc.perftests.disareturns
 
 import io.gatling.core.Predef._
+import io.gatling.core.action.builder.ActionBuilder
+import io.gatling.core.check.CheckBuilder
+import io.gatling.core.check.regex.RegexCheckType
+import io.gatling.core.structure.ChainBuilder
 import io.gatling.http.Predef._
 import io.gatling.http.request.builder.HttpRequestBuilder
 import uk.gov.hmrc.performance.conf.ServicesConfiguration
 import uk.gov.hmrc.perftests.disareturns.constants.AppConfig.{disaBaseUrl, disaRoute}
 
+import scala.concurrent.duration.DurationInt
+
 object MonthlyReturnsRequests extends ServicesConfiguration {
+
+  val amazonUrlPattern    = """action="(.*?)""""
+  val upscanTimer: Int  = 25 // in seconds, how long to wait for upscan upload - first spinny wheel
+  val statusChecks: Int = 50 // how many checks for file status to make during second spinny wheel - 3 second intervals
+  val refreshes: Int    = 5 // how many times still checking file page should be refreshed - 1 second interval
 
   val navigateToMonthlyReportSubmissionPage: HttpRequestBuilder =
     http("Navigate to Monthly Report Submission Page")
@@ -42,55 +53,43 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .get(s"$disaBaseUrl$disaRoute/file-upload")
       .check(status.is(200))
 
-  lazy val appFileUpload: HttpRequestBuilder =
-    http(s"GET $disaBaseUrl$disaRoute/file-upload")
+  val getUploadPage: HttpRequestBuilder =
+    http("Get Upload an XML file")
       .get(s"$disaBaseUrl$disaRoute/file-upload")
-      .check(status.is(200))
-      .check(saveFileUploadurl)
-      .check(saveCallBack)
-      .check(saveAmazonDate)
-      .check(saveAmazonCredential)
-      .check(saveUpscanIniateResponse)
-      .check(saveUpscanInitiateRecieved)
-      .check(saveAmazonMetaOriginalFileName)
-      .check(saveAmazonMetaRequestId)
-      .check(saveAmazonAlgorithm)
-      .check(saveKey)
-      .check(saveAcl)
-      .check(saveMetaSessionId)
-      .check(saveConsumingService)
-      .check(saveQAmazonSignature)
-      .check(savePolicy)
-      .check(saveReference)
-      .check(saveFileType)
-
-  lazy val appPostFileUploadAmls: HttpRequestBuilder =
-    http(s"POST $urlUploadProofOfAmls")
-      .post(f"#{fileUploadAmazonUrl}")
-      .header("content-type", "multipart/form-data; boundary=----WebKitFormBoundarycQF5VGEC89D5MB5B")
-      .asMultipartForm
-      .bodyPart(StringBodyPart("x-amz-meta-callback-url", f"#{callBack}"))
-      .bodyPart(StringBodyPart("x-amz-date", f"#{amazonDate}"))
-      .bodyPart(StringBodyPart("x-amz-credential", f"#{amazonCredential}"))
-      .bodyPart(StringBodyPart("x-amz-meta-upscan-initiate-response", f"#{upscanInitiateResponse}"))
-      .bodyPart(StringBodyPart("x-amz-meta-upscan-initiate-received", f"#{upscanInitiateReceived}"))
-      .bodyPart(StringBodyPart("x-amz-meta-request-id", f"#{metaRequestId}"))
-      .bodyPart(StringBodyPart("x-amz-meta-original-filename", "UtilityBill.pdf"))
-      .bodyPart(StringBodyPart("x-amz-algorithm", f"#{amazonAlgorithm}"))
-      .bodyPart(StringBodyPart("key", f"#{key}"))
-      .bodyPart(StringBodyPart("acl", f"#{acl}"))
-      .bodyPart(StringBodyPart("x-amz-signature", f"#{amazonSignature}"))
-      .bodyPart(StringBodyPart("x-amz-meta-session-id", f"#{metaSessionId}"))
-      .bodyPart(StringBodyPart("x-amz-meta-consuming-service", f"#{consumingService}"))
-      .bodyPart(StringBodyPart("policy", f"#{policy}"))
-      .formUpload("file", "files/UtilityBill.pdf")
-      .asMultipartForm
-      .check(status.is(204))
-
-  lazy val appGetFileUploadedSuccessfullyAmls: HttpRequestBuilder =
-    http(s"GET $urlFileUploadedSuccessfully")
-      .get(s"$baseUrlOverseas" + urlFileUploadedSuccessfully)
-      .check(saveCsrfToken)
+      .check(form("#uploadForm").saveAs("DisaUploadForm"))
+      .check(saveFileUploadUrl)
       .check(status.is(200))
 
+  val postValidFileUpload: HttpRequestBuilder =
+    http("Post a valid File Upload")
+      .post("#{fileUploadAmazonUrl}".el[String])
+      .asMultipartForm
+      .form("#{CBCUploadForm}")
+      .bodyPart(RawFileBodyPart("file", "data/isa-open-valid.xlsx"))
+      .check(status.is(303))
+      .check(header("location".el[String]).saveAs("Status"))
+
+  // UPSCAN RELATED METHODS BELOW
+
+  def saveFileUploadUrl: CheckBuilder[RegexCheckType, String] =
+    regex(_ => amazonUrlPattern).saveAs("fileUploadAmazonUrl")
+
+  val pollingStatus: List[ActionBuilder] = {
+    val pollRequest: ChainBuilder =
+      asLongAsDuring(
+        session => !session("status").asOption[Int].contains(200),
+        upscanTimer.seconds
+      ) {
+        exec(
+          http("poll status")
+            .get(s"$disaBaseUrl$disaRoute/file-upload")
+            .check(status.is(303))
+            .check(header("status".el[String]).saveAs("status"))
+            .silent
+        )
+          .pause(5)
+      }
+    pollRequest.actionBuilders
+ }
 }
+
