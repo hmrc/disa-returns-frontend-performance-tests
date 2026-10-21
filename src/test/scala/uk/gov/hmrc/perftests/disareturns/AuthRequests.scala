@@ -37,6 +37,7 @@ object AuthRequests extends ServicesConfiguration {
       .formParam("credentialStrength", "strong")
       .formParam("authorityId", "")
       .formParam("confidenceLevel", "50")
+      .formParam("enrolment[0].state", "Activated")
       .formParam("affinityGroup", "Organisation")
       .formParam("enrolment[0].name", "HMRC-DISA-ORG")
       .formParam("enrolment[0].taxIdentifier[0].name", "ZREF")
