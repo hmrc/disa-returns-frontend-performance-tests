@@ -18,7 +18,7 @@ package uk.gov.hmrc.perftests.disareturns
 
 import uk.gov.hmrc.performance.simulation.PerformanceTestRunner
 import uk.gov.hmrc.perftests.disareturns.AuthRequests.{navigateToAuthLoginStubPage, submitLogin}
-import uk.gov.hmrc.perftests.disareturns.MonthlyReturnsRequests.{navigateToFileUploadPage, navigateToMonthlyReportSubmissionPage, postMonthlyReportSubmissionPage}
+import uk.gov.hmrc.perftests.disareturns.MonthlyReturnsRequests.{getUploadPage, navigateToFileUploadPage, navigateToMonthlyReportSubmissionPage, postMonthlyReportSubmissionPage, postValidFileUpload}
 
 
 class DisaReturnsSimulation extends PerformanceTestRunner {
@@ -28,7 +28,8 @@ class DisaReturnsSimulation extends PerformanceTestRunner {
     submitLogin("monthly-report-submission"),
     navigateToMonthlyReportSubmissionPage,
     postMonthlyReportSubmissionPage,
-    navigateToFileUploadPage
+    getUploadPage,
+    postValidFileUpload
 
   )
   runSimulation()

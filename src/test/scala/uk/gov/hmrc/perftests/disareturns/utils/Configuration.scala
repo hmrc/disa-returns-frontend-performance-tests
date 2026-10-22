@@ -20,9 +20,7 @@ case class Configuration(baseUrl: String, authLogin: String, ndrcLandingURL: Str
 
 object Configuration {
 
-  val baseUrlNDRC           = baseUrlFor("national-duty-repayment-center-service")
-  val authUrl               = baseUrlFor("auth-login-stub")
-  val authRedirectURL       = s"$baseUrlNDRC/apply-for-repayment-of-import-duty-and-import-vat/what-do-you-want-to-do"
+
   val authLoginStubEndpoint = "/auth-login-stub/gg-sign-in"
   val usrDir                = System.getProperty("user.dir") + "/src/test/resources/data/"
 

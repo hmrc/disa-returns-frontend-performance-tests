@@ -54,7 +54,7 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .check(status.is(200))
 
   val getUploadPage: HttpRequestBuilder =
-    http("Get Upload an XML file")
+    http("Get Upload a valid file")
       .get(s"$disaBaseUrl$disaRoute/file-upload")
       .check(form("#uploadForm").saveAs("DisaUploadForm"))
       .check(saveFileUploadUrl)
@@ -62,12 +62,12 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
 
   val postValidFileUpload: HttpRequestBuilder =
     http("Post a valid File Upload")
-      .post("#{fileUploadAmazonUrl}".el[String])
+      .post("#{fileUploadAmazonUrl}")
       .asMultipartForm
       .form("#{CBCUploadForm}")
       .bodyPart(RawFileBodyPart("file", "data/isa-open-valid.xlsx"))
       .check(status.is(303))
-      .check(header("location".el[String]).saveAs("Status"))
+      .check(header("location").saveAs("Status"))
 
   // UPSCAN RELATED METHODS BELOW
 
@@ -84,7 +84,7 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
           http("poll status")
             .get(s"$disaBaseUrl$disaRoute/file-upload")
             .check(status.is(303))
-            .check(header("status".el[String]).saveAs("status"))
+            .check(header("status").saveAs("status"))
             .silent
         )
           .pause(5)
