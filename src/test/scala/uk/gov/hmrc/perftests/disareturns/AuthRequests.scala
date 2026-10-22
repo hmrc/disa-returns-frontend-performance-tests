@@ -30,7 +30,7 @@ object AuthRequests extends ServicesConfiguration {
       .get(authWizardUrl)
       .check(status.is(200))
 
-  def submitLogin(redirectionUrl: String): HttpRequestBuilder =
+  def submitLogin(zrefValue: String ,redirectionUrl: String): HttpRequestBuilder =
     http("Sign in as an ISA Manager")
       .post(authWizardUrl)
       .formParam("redirectionUrl", s"$redirectionBaseUrl$redirectionUrl")
@@ -41,6 +41,6 @@ object AuthRequests extends ServicesConfiguration {
       .formParam("affinityGroup", "Organisation")
       .formParam("enrolment[0].name", "HMRC-DISA-ORG")
       .formParam("enrolment[0].taxIdentifier[0].name", "ZREF")
-      .formParam("enrolment[0].taxIdentifier[0].value", "Z1234")
+      .formParam("enrolment[0].taxIdentifier[0].value", (zrefValue))
       .check(status.is(303), status.not(404), status.not(500))
 }

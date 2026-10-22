@@ -41,17 +41,19 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .check(status.is(200))
       .check(css("input[name=csrfToken]", "value").saveAs("csrfToken"))
 
-  val postMonthlyReportSubmissionPage: HttpRequestBuilder =
+  val postYesMonthlyReportSubmissionPage: HttpRequestBuilder =
     http("Post file upload option from The Monthly Report Submission Page")
       .post(s"$disaBaseUrl$disaRoute/monthly-report-submission": String)
       .formParam("value", "yes")
       .formParam("csrfToken", "#{csrfToken}")
       .check(status.is(303))
 
-  val navigateToFileUploadPage: HttpRequestBuilder =
-    http("Navigate to file upload Page")
-      .get(s"$disaBaseUrl$disaRoute/file-upload")
-      .check(status.is(200))
+  val postNoMonthlyReportSubmissionPage: HttpRequestBuilder =
+    http("Post file upload option from The Monthly Report Submission Page")
+      .post(s"$disaBaseUrl$disaRoute/monthly-report-submission": String)
+      .formParam("value", "no")
+      .formParam("csrfToken", "#{csrfToken}")
+      .check(status.is(303))
 
   val getUploadPage: HttpRequestBuilder =
     http("Get Upload a valid file")
@@ -64,10 +66,28 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
     http("Post a valid File Upload")
       .post("#{fileUploadAmazonUrl}")
       .asMultipartForm
-      .form("#{CBCUploadForm}")
+      .form("#{DisaUploadForm}")
       .bodyPart(RawFileBodyPart("file", "data/isa-open-valid.xlsx"))
       .check(status.is(303))
       .check(header("location").saveAs("Status"))
+
+  val navigateToCheckYourAnswersPage: HttpRequestBuilder =
+    http("Navigate to Check your answers Page")
+      .get(s"$disaBaseUrl$disaRoute/check-your-answers")
+      .check(status.is(200))
+      .check(css("input[name=csrfToken]", "value").saveAs("csrfToken"))
+
+  val postCheckYourAnswersPage: HttpRequestBuilder =
+    http("Post Check your answers Page")
+      .post(s"$disaBaseUrl$disaRoute/check-your-answers": String)
+      .formParam("csrfToken", "#{csrfToken}")
+      .check(status.is(303))
+
+  val navigateToDeclarationPage: HttpRequestBuilder =
+    http("Navigate to Declaration Page")
+      .get(s"$disaBaseUrl$disaRoute/declaration")
+      .check(status.is(200))
+
 
   // UPSCAN RELATED METHODS BELOW
 

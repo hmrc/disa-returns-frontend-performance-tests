@@ -18,19 +18,32 @@ package uk.gov.hmrc.perftests.disareturns
 
 import uk.gov.hmrc.performance.simulation.PerformanceTestRunner
 import uk.gov.hmrc.perftests.disareturns.AuthRequests.{navigateToAuthLoginStubPage, submitLogin}
-import uk.gov.hmrc.perftests.disareturns.MonthlyReturnsRequests.{getUploadPage, navigateToFileUploadPage, navigateToMonthlyReportSubmissionPage, postMonthlyReportSubmissionPage, postValidFileUpload}
+import uk.gov.hmrc.perftests.disareturns.MonthlyReturnsRequests.{getUploadPage, navigateToCheckYourAnswersPage, navigateToDeclarationPage, navigateToMonthlyReportSubmissionPage, postCheckYourAnswersPage, postNoMonthlyReportSubmissionPage, postValidFileUpload, postYesMonthlyReportSubmissionPage}
 
 
 class DisaReturnsSimulation extends PerformanceTestRunner {
 
+
+  setup("ISA-Manager-Submit-Nil-Returns", "ISA Manager Submit Returns - Nil return Journey") withRequests (
+    navigateToAuthLoginStubPage,
+    submitLogin(zrefValue = "Z1233","monthly-report-submission"),
+    navigateToMonthlyReportSubmissionPage,
+    postNoMonthlyReportSubmissionPage,
+    navigateToCheckYourAnswersPage,
+    postCheckYourAnswersPage,
+    navigateToDeclarationPage
+  )
+
   setup("ISA-Manager-Submit-Returns", "ISA Manager Submit Returns - File upload Journey") withRequests (
     navigateToAuthLoginStubPage,
-    submitLogin("monthly-report-submission"),
+    submitLogin(zrefValue = "Z1234","monthly-report-submission"),
     navigateToMonthlyReportSubmissionPage,
-    postMonthlyReportSubmissionPage,
+    postYesMonthlyReportSubmissionPage,
     getUploadPage,
-    postValidFileUpload
+    postValidFileUpload,
+
 
   )
+
   runSimulation()
 }
