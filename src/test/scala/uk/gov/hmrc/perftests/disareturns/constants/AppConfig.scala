@@ -19,8 +19,15 @@ package uk.gov.hmrc.perftests.disareturns.constants
 import uk.gov.hmrc.performance.conf.ServicesConfiguration
 
 object AppConfig extends ServicesConfiguration {
-  val disaBaseUrl: String   = baseUrlFor("disa-returns-frontend")
-  val disaRoute: String     = "/submit-manage-isas-return"
-  val authHost: String      = baseUrlFor("auth-login-api")
-  val authWizardUrl: String = s"$authHost/auth-login-stub/gg-sign-in"
+  val disaBaseUrl: String                  = baseUrlFor("disa-returns-frontend")
+  val disaRoute: String                    = "/submit-manage-isas-return"
+  val authHost: String                     = baseUrlFor("auth-login-api")
+  val authWizardUrl: String                = s"$authHost/auth-login-stub/gg-sign-in"
+  val disaReturnsSubmissionHost: String    = baseUrlFor("disa-returns-submission")
+  val submissionOverridesPath: String      = "/disa-returns-submission/test-only/overrides"
+  val submissionMonthlyReturnsPath: String = "/disa-returns-submission/test-only/monthly-returns"
+  val disaReturnsBackendHost: String       = baseUrlFor("disa-returns-backend")
+  val backendMonthlyReturnsPath: String    = "/disa-returns-backend/test-only/monthly-returns"
+
+  val submissionClockDate: String = "2026-10-17"
 }

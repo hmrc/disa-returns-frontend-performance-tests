@@ -19,21 +19,21 @@ package uk.gov.hmrc.perftests.disareturns
 import io.gatling.core.Predef._
 import io.gatling.core.action.builder.ActionBuilder
 import io.gatling.core.check.CheckBuilder
-import io.gatling.core.check.regex.RegexCheckType
-import io.gatling.core.structure.ChainBuilder
+import io.gatling.core.check.css.CssCheckType
+import jodd.lagarto.dom.NodeSelector
 import io.gatling.http.Predef._
 import io.gatling.http.request.builder.HttpRequestBuilder
 import uk.gov.hmrc.performance.conf.ServicesConfiguration
 import uk.gov.hmrc.perftests.disareturns.constants.AppConfig.{disaBaseUrl, disaRoute}
 
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 object MonthlyReturnsRequests extends ServicesConfiguration {
 
-  val amazonUrlPattern    = """action="(.*?)""""
-  val upscanTimer: Int  = 25 // in seconds, how long to wait for upscan upload - first spinny wheel
-  val statusChecks: Int = 50 // how many checks for file status to make during second spinny wheel - 3 second intervals
-  val refreshes: Int    = 5 // how many times still checking file page should be refreshed - 1 second interval
+  val fileProcessingPollInterval: FiniteDuration = 2.seconds
+  val fileProcessingMaxWait: FiniteDuration      = 5.minutes
+
+  private val uploadedReportFilesPath = s"$disaRoute/uploaded-report-files"
 
   val navigateToMonthlyReportSubmissionPage: HttpRequestBuilder =
     http("Navigate to Monthly Report Submission Page")
@@ -42,14 +42,14 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .check(css("input[name=csrfToken]", "value").saveAs("csrfToken"))
 
   val postYesMonthlyReportSubmissionPage: HttpRequestBuilder =
-    http("Post file upload option from The Monthly Report Submission Page")
+    http("Post 'yes' on Monthly Report Submission Page")
       .post(s"$disaBaseUrl$disaRoute/monthly-report-submission": String)
       .formParam("value", "yes")
       .formParam("csrfToken", "#{csrfToken}")
       .check(status.is(303))
 
   val postNoMonthlyReportSubmissionPage: HttpRequestBuilder =
-    http("Post file upload option from The Monthly Report Submission Page")
+    http("Post 'no' on Monthly Report Submission Page")
       .post(s"$disaBaseUrl$disaRoute/monthly-report-submission": String)
       .formParam("value", "no")
       .formParam("csrfToken", "#{csrfToken}")
@@ -58,18 +58,37 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
   val getUploadPage: HttpRequestBuilder =
     http("Get Upload a valid file")
       .get(s"$disaBaseUrl$disaRoute/file-upload")
-      .check(form("#uploadForm").saveAs("DisaUploadForm"))
-      .check(saveFileUploadUrl)
       .check(status.is(200))
+      .check(form("#file-upload-form").saveAs("DisaUploadForm"))
+      .check(saveFileUploadUrl)
 
   val postValidFileUpload: HttpRequestBuilder =
     http("Post a valid File Upload")
       .post("#{fileUploadAmazonUrl}")
       .asMultipartForm
       .form("#{DisaUploadForm}")
-      .bodyPart(RawFileBodyPart("file", "data/isa-open-valid.xlsx"))
+      .bodyPart(RawFileBodyPart("file", "data/isa-closed-valid.csv").contentType("text/csv"))
       .check(status.is(303))
-      .check(header("location").saveAs("Status"))
+      .check(headerRegex("Location", """/file-processing\?key=([^&]+)""").saveAs("uploadReference"))
+
+  val navigateToFileProcessingPage: HttpRequestBuilder =
+    http("Navigate to File Processing Page")
+      .get(s"$disaBaseUrl$disaRoute/file-processing?key=#{uploadReference}")
+      .check(status.is(200))
+
+  val navigateToUploadedReportFilesPage: HttpRequestBuilder =
+    http("Navigate to Uploaded Report Files Page")
+      .get(s"$disaBaseUrl$uploadedReportFilesPath")
+      .check(status.is(200))
+      .check(css("input[name=csrfToken]", "value").saveAs("csrfToken"))
+
+  val postNoUploadedReportFilesPage: HttpRequestBuilder =
+    http("Post 'no' on Uploaded Report Files Page")
+      .post(s"$disaBaseUrl$uploadedReportFilesPath": String)
+      .formParam("value", "no")
+      .formParam("csrfToken", "#{csrfToken}")
+      .check(status.is(303))
+      .check(header("Location").is(s"$disaRoute/check-your-answers"))
 
   val navigateToCheckYourAnswersPage: HttpRequestBuilder =
     http("Navigate to Check your answers Page")
@@ -87,29 +106,42 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
     http("Navigate to Declaration Page")
       .get(s"$disaBaseUrl$disaRoute/declaration")
       .check(status.is(200))
+      .check(css("input[name=csrfToken]", "value").saveAs("csrfToken"))
+
+  val postDeclarationPage: HttpRequestBuilder =
+    http("Post Declaration Page")
+      .post(s"$disaBaseUrl$disaRoute/declaration": String)
+      .formParam("csrfToken", "#{csrfToken}")
+      .check(status.is(303))
+      .check(header("Location").is(s"$disaRoute/submission-complete"))
 
 
   // UPSCAN RELATED METHODS BELOW
 
-  def saveFileUploadUrl: CheckBuilder[RegexCheckType, String] =
-    regex(_ => amazonUrlPattern).saveAs("fileUploadAmazonUrl")
-
-  val pollingStatus: List[ActionBuilder] = {
-    val pollRequest: ChainBuilder =
-      asLongAsDuring(
-        session => !session("status").asOption[Int].contains(200),
-        upscanTimer.seconds
-      ) {
-        exec(
-          http("poll status")
-            .get(s"$disaBaseUrl$disaRoute/file-upload")
-            .check(status.is(303))
-            .check(header("status").saveAs("status"))
-            .silent
-        )
-          .pause(5)
+  def saveFileUploadUrl: CheckBuilder[CssCheckType, NodeSelector] =
+    css("#file-upload-form", "action")
+      .transform { url =>
+        println(s"[getUploadPage] saved fileUploadAmazonUrl: $url")
+        url
       }
-    pollRequest.actionBuilders
- }
+      .saveAs("fileUploadAmazonUrl")
+
+  val pollFileProcessingProgress: List[ActionBuilder] =
+    asLongAsDuring(session => !session.contains("fileProcessingContinueUrl"), fileProcessingMaxWait) {
+      exec(
+        http("Check file processing progress")
+          .get(s"$disaBaseUrl$disaRoute/file-processing/#{uploadReference}/check-progress")
+          .check(status.is(200))
+          .check(css("a[href$='/continue']", "href").optional.saveAs("fileProcessingContinueUrl"))
+      ).doIf(session => !session.contains("fileProcessingContinueUrl")) {
+        pause(fileProcessingPollInterval)
+      }
+    }.actionBuilders
+
+  val continueFromFileProcessing: HttpRequestBuilder =
+    http("Continue from File Processing Page")
+      .get(s"$disaBaseUrl$disaRoute/file-processing/#{uploadReference}/continue")
+      .check(status.is(303))
+      .check(header("Location").is(uploadedReportFilesPath))
 }
 

@@ -1,0 +1,72 @@
+/*
+ * Copyright 2025 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package uk.gov.hmrc.perftests.disareturns.testSetup
+
+import play.api.libs.json.Json
+import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
+import play.api.libs.ws.ahc.StandaloneAhcWSClient
+import uk.gov.hmrc.perftests.disareturns.constants.AppConfig._
+import uk.gov.hmrc.perftests.disareturns.models.SetupAssertions
+
+import javax.inject.Singleton
+import scala.concurrent.{ExecutionContext, Future}
+
+@Singleton
+class SubmissionTestOnlyRequests(ws: StandaloneAhcWSClient)(implicit ec: ExecutionContext) extends SetupAssertions {
+
+  def deleteOverrides(zReferences: Seq[String]): Future[Unit] =
+    ws.url(s"$disaReturnsSubmissionHost$submissionOverridesPath/delete")
+      .addHttpHeaders("Content-Type" -> "application/json")
+      .post(Json.obj("zReferences" -> zReferences).toString())
+      .map { response =>
+        ensureSetup(
+          response.status == 204,
+          s"Failed to delete overrides for [${zReferences.size}] Z-references. Status=${response.status}, Body=${response.body}"
+        )
+      }
+
+  def deleteMonthlyReturns(zReferences: Seq[String]): Future[Unit] =
+    ws.url(s"$disaReturnsSubmissionHost$submissionMonthlyReturnsPath")
+      .addHttpHeaders("Content-Type" -> "application/json")
+      .post(Json.obj("zReferences" -> zReferences).toString())
+      .map { response =>
+        ensureSetup(
+          response.status == 204,
+          s"Failed to delete monthly returns for [${zReferences.size}] Z-references. Status=${response.status}, Body=${response.body}"
+        )
+      }
+
+  def setReportingWindowOverride(zReferences: Seq[String], startDate: String, endDate: String): Future[Unit] =
+    ws.url(s"$disaReturnsSubmissionHost$submissionOverridesPath")
+      .addHttpHeaders("Content-Type" -> "application/json")
+      .put(
+        Json
+          .obj(
+            "zReferences"     -> zReferences,
+            "clock"           -> Json.obj("date" -> submissionClockDate),
+            "reportingWindow" -> Json.obj("startDate" -> startDate, "endDate" -> endDate)
+          )
+          .toString()
+      )
+      .map { response =>
+        ensureSetup(
+          response.status == 204,
+          s"Failed to set reporting-window override for [${zReferences.size}] Z-references. Status=${response.status}, Body=${response.body}"
+        )
+      }
+
+}
