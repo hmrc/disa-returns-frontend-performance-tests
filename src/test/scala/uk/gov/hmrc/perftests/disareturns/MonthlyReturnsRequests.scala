@@ -69,11 +69,7 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .form("#{DisaUploadForm}")
       .bodyPart(RawFileBodyPart("file", filePath).contentType(contentType))
       .check(status.is(303))
-      .check(header("Location").transform { location =>
-        println(s"[postFileUpload] Location: $location")
-        location
-      })
-      .check(headerRegex("Location", """/file-processing\?key=([^&]+)""").saveAs("uploadReference"))
+      .check(headerRegex("Location", """/file-processing\?(?:.*&)?key=([^&]+)""").saveAs("uploadReference"))
 
   val postCsvFileUpload: HttpRequestBuilder =
     postFileUpload("Post a valid CSV File Upload", "data/isa-monthly-return-3000.csv", "text/csv")
