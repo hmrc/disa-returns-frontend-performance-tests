@@ -62,14 +62,28 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .check(form("#file-upload-form").saveAs("DisaUploadForm"))
       .check(saveFileUploadUrl)
 
-  val postValidFileUpload: HttpRequestBuilder =
-    http("Post a valid File Upload")
+  private def postFileUpload(requestName: String, filePath: String, contentType: String): HttpRequestBuilder =
+    http(requestName)
       .post("#{fileUploadAmazonUrl}")
       .asMultipartForm
       .form("#{DisaUploadForm}")
-      .bodyPart(RawFileBodyPart("file", "data/isa-closed-valid.csv").contentType("text/csv"))
+      .bodyPart(RawFileBodyPart("file", filePath).contentType(contentType))
       .check(status.is(303))
+      .check(header("Location").transform { location =>
+        println(s"[postFileUpload] Location: $location")
+        location
+      })
       .check(headerRegex("Location", """/file-processing\?key=([^&]+)""").saveAs("uploadReference"))
+
+  val postCsvFileUpload: HttpRequestBuilder =
+    postFileUpload("Post a valid CSV File Upload", "data/isa-monthly-return-3000.csv", "text/csv")
+
+  val postXlsxFileUpload: HttpRequestBuilder =
+    postFileUpload(
+      "Post a valid XLSX File Upload",
+      "data/isa-monthly-return-3000.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
   val navigateToFileProcessingPage: HttpRequestBuilder =
     http("Navigate to File Processing Page")
@@ -81,6 +95,14 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .get(s"$disaBaseUrl$uploadedReportFilesPath")
       .check(status.is(200))
       .check(css("input[name=csrfToken]", "value").saveAs("csrfToken"))
+
+  val postYesUploadedReportFilesPage: HttpRequestBuilder =
+    http("Post 'yes' on Uploaded Report Files Page")
+      .post(s"$disaBaseUrl$uploadedReportFilesPath": String)
+      .formParam("value", "yes")
+      .formParam("csrfToken", "#{csrfToken}")
+      .check(status.is(303))
+      .check(header("Location").is(s"$disaRoute/file-upload"))
 
   val postNoUploadedReportFilesPage: HttpRequestBuilder =
     http("Post 'no' on Uploaded Report Files Page")
@@ -126,14 +148,19 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       }
       .saveAs("fileUploadAmazonUrl")
 
+  // Matches on the current uploadReference so a continue URL saved for an earlier file in the journey
+  // doesn't end the poll. Kept as a single top-level action because ChainBuilder.actionBuilders is reversed.
+  private def fileProcessingComplete(session: Session): Boolean =
+    session("fileProcessingContinueUrl").asOption[String].exists(_.contains(session("uploadReference").as[String]))
+
   val pollFileProcessingProgress: List[ActionBuilder] =
-    asLongAsDuring(session => !session.contains("fileProcessingContinueUrl"), fileProcessingMaxWait) {
+    asLongAsDuring(session => !fileProcessingComplete(session), fileProcessingMaxWait) {
       exec(
         http("Check file processing progress")
           .get(s"$disaBaseUrl$disaRoute/file-processing/#{uploadReference}/check-progress")
           .check(status.is(200))
           .check(css("a[href$='/continue']", "href").optional.saveAs("fileProcessingContinueUrl"))
-      ).doIf(session => !session.contains("fileProcessingContinueUrl")) {
+      ).doIf(session => !fileProcessingComplete(session)) {
         pause(fileProcessingPollInterval)
       }
     }.actionBuilders

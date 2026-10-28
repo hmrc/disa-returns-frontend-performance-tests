@@ -20,7 +20,7 @@ import io.gatling.core.Predef._
 import io.gatling.core.structure.ChainBuilder
 import uk.gov.hmrc.performance.simulation.PerformanceTestRunner
 import uk.gov.hmrc.perftests.disareturns.AuthRequests.{navigateToAuthLoginStubPage, submitLogin}
-import uk.gov.hmrc.perftests.disareturns.MonthlyReturnsRequests.{continueFromFileProcessing, getUploadPage, navigateToCheckYourAnswersPage, navigateToDeclarationPage, navigateToFileProcessingPage, navigateToMonthlyReportSubmissionPage, navigateToUploadedReportFilesPage, pollFileProcessingProgress, postCheckYourAnswersPage, postDeclarationPage, postNoMonthlyReportSubmissionPage, postNoUploadedReportFilesPage, postValidFileUpload, postYesMonthlyReportSubmissionPage}
+import uk.gov.hmrc.perftests.disareturns.MonthlyReturnsRequests.{continueFromFileProcessing, getUploadPage, navigateToCheckYourAnswersPage, navigateToDeclarationPage, navigateToFileProcessingPage, navigateToMonthlyReportSubmissionPage, navigateToUploadedReportFilesPage, pollFileProcessingProgress, postCheckYourAnswersPage, postDeclarationPage, postNoMonthlyReportSubmissionPage, postNoUploadedReportFilesPage, postCsvFileUpload, postXlsxFileUpload, postYesMonthlyReportSubmissionPage, postYesUploadedReportFilesPage}
 import uk.gov.hmrc.perftests.disareturns.testSetup.BaseRequests
 import uk.gov.hmrc.perftests.disareturns.utils.LoadSizing
 
@@ -91,7 +91,16 @@ class DisaReturnsSimulation extends PerformanceTestRunner with BaseRequests {
     navigateToMonthlyReportSubmissionPage,
     postYesMonthlyReportSubmissionPage,
     getUploadPage,
-    postValidFileUpload,
+    postCsvFileUpload,
+    navigateToFileProcessingPage
+  ).withActions(
+    pollFileProcessingProgress: _*
+  ).withRequests(
+    continueFromFileProcessing,
+    navigateToUploadedReportFilesPage,
+    postYesUploadedReportFilesPage,
+    getUploadPage,
+    postXlsxFileUpload,
     navigateToFileProcessingPage
   ).withActions(
     pollFileProcessingProgress: _*
