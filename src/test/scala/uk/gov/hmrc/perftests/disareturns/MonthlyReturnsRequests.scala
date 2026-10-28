@@ -60,7 +60,8 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .get(s"$disaBaseUrl$disaRoute/file-upload")
       .check(status.is(200))
       .check(form("#file-upload-form").saveAs("DisaUploadForm"))
-      .check(saveFileUploadUrl)
+      .check(css("#file-upload-form", "action").saveAs("fileUploadAmazonUrl")
+      )
 
   private def postFileUpload(requestName: String, filePath: String, contentType: String): HttpRequestBuilder =
     http(requestName)
@@ -135,15 +136,6 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
 
 
   // UPSCAN RELATED METHODS BELOW
-
-  def saveFileUploadUrl: CheckBuilder[CssCheckType, NodeSelector] =
-    css("#file-upload-form", "action")
-      .transform { url =>
-        println(s"[getUploadPage] saved fileUploadAmazonUrl: $url")
-        url
-      }
-      .saveAs("fileUploadAmazonUrl")
-
   // Matches on the current uploadReference so a continue URL saved for an earlier file in the journey
   // doesn't end the poll. Kept as a single top-level action because ChainBuilder.actionBuilders is reversed.
   private def fileProcessingComplete(session: Session): Boolean =
