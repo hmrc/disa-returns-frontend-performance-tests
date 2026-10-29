@@ -136,8 +136,7 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
 
 
   // UPSCAN RELATED METHODS BELOW
-  // Matches on the current uploadReference so a continue URL saved for an earlier file in the journey
-  // doesn't end the poll. Kept as a single top-level action because ChainBuilder.actionBuilders is reversed.
+  // Matches on the current uploadReference so a continue URL saved for an earlier file in the journey doesn't end the poll
   private def fileProcessingComplete(session: Session): Boolean =
     session("fileProcessingContinueUrl").asOption[String].exists(_.contains(session("uploadReference").as[String]))
 
