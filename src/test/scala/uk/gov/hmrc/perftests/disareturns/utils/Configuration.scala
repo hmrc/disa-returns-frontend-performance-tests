@@ -20,7 +20,6 @@ case class Configuration(baseUrl: String, authLogin: String, ndrcLandingURL: Str
 
 object Configuration {
 
-
   val authLoginStubEndpoint = "/auth-login-stub/gg-sign-in"
   val usrDir                = System.getProperty("user.dir") + "/src/test/resources/data/"
 

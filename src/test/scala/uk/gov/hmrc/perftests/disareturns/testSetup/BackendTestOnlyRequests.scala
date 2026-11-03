@@ -36,4 +36,24 @@ class BackendTestOnlyRequests(ws: StandaloneAhcWSClient)(implicit ec: ExecutionC
         )
       }
 
+  def deleteAllFileUploadWorkItems(): Future[Unit] =
+    ws.url(s"$disaReturnsBackendHost$backendFileUploadWorkItemsPath")
+      .delete()
+      .map { response =>
+        ensureSetup(
+          response.status == 204,
+          s"Failed to delete backend file upload work items. Status=${response.status}, Body=${response.body}"
+        )
+      }
+
+  def deleteAllSubmissionWorkItems(): Future[Unit] =
+    ws.url(s"$disaReturnsBackendHost$backendSubmissionWorkItemsPath")
+      .delete()
+      .map { response =>
+        ensureSetup(
+          response.status == 204,
+          s"Failed to delete backend submission work items. Status=${response.status}, Body=${response.body}"
+        )
+      }
+
 }
