@@ -68,14 +68,14 @@ trait BaseRequests {
 
   def testDataCleanUp(submissionZReferences: Seq[String]): Future[Unit] = {
     val zReferencesToDelete              = submissionZReferences.distinct
-    val monthlyReturnCleanup             =
+    def monthlyReturnCleanup             =
       if (zReferencesToDelete.nonEmpty) {
         inBatches(zReferencesToDelete)(submissionTestOnlyRequests.deleteMonthlyReturns).recover { case NonFatal(e) =>
           println(s"Warning: failed to clean submission monthly returns: ${e.getMessage}")
           ()
         }
       } else Future.unit
-    val overrideCleanup                  =
+    def overrideCleanup                  =
       if (preparedZReferences.nonEmpty) {
         val zReferences = preparedZReferences.keys.toSeq
         inBatches(zReferences)(submissionTestOnlyRequests.deleteOverrides).recover { case NonFatal(e) =>
@@ -85,36 +85,30 @@ trait BaseRequests {
           ()
         }
       } else Future.unit
-    val backendMonthlyReturnCleanup      =
+    def backendMonthlyReturnCleanup      =
       backendTestOnlyRequests.deleteAllMonthlyReturns().recover { case NonFatal(e) =>
         println(s"Warning: failed to clean backend monthly returns: ${e.getMessage}")
         ()
       }
-    val backendFileUploadWorkItemCleanup =
+    def backendFileUploadWorkItemCleanup =
       backendTestOnlyRequests.deleteAllFileUploadWorkItems().recover { case NonFatal(e) =>
         println(s"Warning: failed to clean backend file upload work items: ${e.getMessage}")
         ()
       }
-    val backendSubmissionWorkItemCleanup =
+    def backendSubmissionWorkItemCleanup =
       backendTestOnlyRequests.deleteAllSubmissionWorkItems().recover { case NonFatal(e) =>
         println(s"Warning: failed to clean backend submission work items: ${e.getMessage}")
         ()
       }
 
-    Future
-      .sequence(
-        Seq(
-          monthlyReturnCleanup,
-          overrideCleanup,
-          backendMonthlyReturnCleanup,
-          backendFileUploadWorkItemCleanup,
-          backendSubmissionWorkItemCleanup
-        )
-      )
-      .map(_ => ())
-      .andThen { case _ =>
-        wsClient.close()
-        system.terminate()
-      }
+    val cleanup = for {
+      _ <- Future.sequence(Seq(backendFileUploadWorkItemCleanup, backendSubmissionWorkItemCleanup))
+      _ <- Future.sequence(Seq(backendMonthlyReturnCleanup, monthlyReturnCleanup, overrideCleanup))
+    } yield ()
+
+    cleanup.andThen { case _ =>
+      wsClient.close()
+      system.terminate()
+    }
   }
 }

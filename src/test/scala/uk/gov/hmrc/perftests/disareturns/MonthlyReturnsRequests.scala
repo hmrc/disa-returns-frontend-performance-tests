@@ -60,8 +60,7 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .get(s"$disaBaseUrl$disaRoute/file-upload")
       .check(status.is(200))
       .check(form("#file-upload-form").saveAs("DisaUploadForm"))
-      .check(css("#file-upload-form", "action").saveAs("fileUploadAmazonUrl")
-      )
+      .check(css("#file-upload-form", "action").saveAs("fileUploadAmazonUrl"))
 
   private def postFileUpload(requestName: String, filePath: String, contentType: String): HttpRequestBuilder =
     http(requestName)
@@ -134,7 +133,6 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .check(status.is(303))
       .check(header("Location").is(s"$disaRoute/submission-complete"))
 
-
   // UPSCAN RELATED METHODS BELOW
   // Matches on the current uploadReference so a continue URL saved for an earlier file in the journey doesn't end the poll
   private def fileProcessingComplete(session: Session): Boolean =
@@ -158,4 +156,3 @@ object MonthlyReturnsRequests extends ServicesConfiguration {
       .check(status.is(303))
       .check(header("Location").is(uploadedReportFilesPath))
 }
-
