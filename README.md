@@ -14,6 +14,11 @@ Start `DISA_RETURNS_ALL` services as follows:
 sm2 --start DISA_RETURNS_ALL
 ```
 
+The backend and submission must have their test-only routers enabled. Setup and teardown use
+`DELETE /disa-returns-backend/test-only/monthly-returns/cleanup` to clear all backend returns and work items, and
+`POST /disa-returns-submission/test-only/monthly-returns/cleanup` to clear submission returns and work items
+only for the Z-references used by the run.
+
 ### Logging
 
 The default log level for all HTTP requests is set to `WARN`. Configure [logback.xml](src/test/resources/logback.xml) to update this if required.

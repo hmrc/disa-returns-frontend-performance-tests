@@ -26,33 +26,13 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class BackendTestOnlyRequests(ws: StandaloneAhcWSClient)(implicit ec: ExecutionContext) extends SetupAssertions {
 
-  def deleteAllMonthlyReturns(): Future[Unit] =
-    ws.url(s"$disaReturnsBackendHost$backendMonthlyReturnsPath")
+  def cleanupAllMonthlyReturns(): Future[Unit] =
+    ws.url(s"$disaReturnsBackendHost$backendMonthlyReturnsCleanupPath")
       .delete()
       .map { response =>
         ensureSetup(
           response.status == 204,
-          s"Failed to delete backend monthly returns. Status=${response.status}, Body=${response.body}"
-        )
-      }
-
-  def deleteAllFileUploadWorkItems(): Future[Unit] =
-    ws.url(s"$disaReturnsBackendHost$backendFileUploadWorkItemsPath")
-      .delete()
-      .map { response =>
-        ensureSetup(
-          response.status == 204,
-          s"Failed to delete backend file upload work items. Status=${response.status}, Body=${response.body}"
-        )
-      }
-
-  def deleteAllSubmissionWorkItems(): Future[Unit] =
-    ws.url(s"$disaReturnsBackendHost$backendSubmissionWorkItemsPath")
-      .delete()
-      .map { response =>
-        ensureSetup(
-          response.status == 204,
-          s"Failed to delete backend submission work items. Status=${response.status}, Body=${response.body}"
+          s"Failed to clean backend monthly returns and work items. Status=${response.status}, Body=${response.body}"
         )
       }
 

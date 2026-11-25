@@ -45,8 +45,8 @@ trait BaseRequests {
 
   def setupSubmissionZReferences(zReferences: Seq[String]): Future[Unit] = {
     val setup = for {
-      _ <- backendTestOnlyRequests.deleteAllMonthlyReturns()
-      _ <- inBatches(zReferences)(submissionTestOnlyRequests.deleteMonthlyReturns)
+      _ <- backendTestOnlyRequests.cleanupAllMonthlyReturns()
+      _ <- inBatches(zReferences)(submissionTestOnlyRequests.cleanupMonthlyReturns)
       _ <- prepareSubmissionZReferences(zReferences)
     } yield ()
 
@@ -67,15 +67,15 @@ trait BaseRequests {
     }
 
   def testDataCleanUp(submissionZReferences: Seq[String]): Future[Unit] = {
-    val zReferencesToDelete              = submissionZReferences.distinct
-    def monthlyReturnCleanup             =
+    val zReferencesToDelete         = submissionZReferences.distinct
+    def monthlyReturnCleanup        =
       if (zReferencesToDelete.nonEmpty) {
-        inBatches(zReferencesToDelete)(submissionTestOnlyRequests.deleteMonthlyReturns).recover { case NonFatal(e) =>
+        inBatches(zReferencesToDelete)(submissionTestOnlyRequests.cleanupMonthlyReturns).recover { case NonFatal(e) =>
           println(s"Warning: failed to clean submission monthly returns: ${e.getMessage}")
           ()
         }
       } else Future.unit
-    def overrideCleanup                  =
+    def overrideCleanup             =
       if (preparedZReferences.nonEmpty) {
         val zReferences = preparedZReferences.keys.toSeq
         inBatches(zReferences)(submissionTestOnlyRequests.deleteOverrides).recover { case NonFatal(e) =>
@@ -85,25 +85,15 @@ trait BaseRequests {
           ()
         }
       } else Future.unit
-    def backendMonthlyReturnCleanup      =
-      backendTestOnlyRequests.deleteAllMonthlyReturns().recover { case NonFatal(e) =>
+    def backendMonthlyReturnCleanup =
+      backendTestOnlyRequests.cleanupAllMonthlyReturns().recover { case NonFatal(e) =>
         println(s"Warning: failed to clean backend monthly returns: ${e.getMessage}")
-        ()
-      }
-    def backendFileUploadWorkItemCleanup =
-      backendTestOnlyRequests.deleteAllFileUploadWorkItems().recover { case NonFatal(e) =>
-        println(s"Warning: failed to clean backend file upload work items: ${e.getMessage}")
-        ()
-      }
-    def backendSubmissionWorkItemCleanup =
-      backendTestOnlyRequests.deleteAllSubmissionWorkItems().recover { case NonFatal(e) =>
-        println(s"Warning: failed to clean backend submission work items: ${e.getMessage}")
         ()
       }
 
     val cleanup = for {
-      _ <- Future.sequence(Seq(backendFileUploadWorkItemCleanup, backendSubmissionWorkItemCleanup))
-      _ <- Future.sequence(Seq(backendMonthlyReturnCleanup, monthlyReturnCleanup, overrideCleanup))
+      _ <- backendMonthlyReturnCleanup
+      _ <- Future.sequence(Seq(monthlyReturnCleanup, overrideCleanup))
     } yield ()
 
     cleanup.andThen { case _ =>
